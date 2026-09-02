@@ -1,0 +1,456 @@
+'use client';
+
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import 'leaflet/dist/leaflet.css';
+import {
+  Plus,
+  Minus,
+  Crosshair,
+  Layers,
+  ChevronDown,
+  Globe2,
+  Bot,
+  ArrowRight,
+  Loader2,
+} from 'lucide-react';
+
+export interface SatelliteMapHandle {
+  flyToTarget: () => void;
+  flyToSpace: () => void;
+}
+
+interface InteractiveSatelliteMapProps {
+  isDived: boolean;
+  onDivedChange: (dived: boolean) => void;
+}
+
+const InteractiveSatelliteMap = forwardRef<SatelliteMapHandle, InteractiveSatelliteMapProps>(
+  function InteractiveSatelliteMap({ isDived, onDivedChange }, ref) {
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<any>(null);
+    const layersRef = useRef<{ [key: string]: any }>({});
+
+    const [zoomLevel, setZoomLevel] = useState(3);
+    const [coords, setCoords] = useState({ lat: 28.6139, lng: 77.2090 });
+    const [layersOpen, setLayersOpen] = useState(true);
+    const [activeLayers, setActiveLayers] = useState({
+      base: true,
+      urban: true,
+      water: true,
+      change: true,
+    });
+
+    const [query, setQuery] = useState('Where did urban expansion occur between 2022 and 2026?');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+    // Initialize Leaflet with ESRI World Imagery
+    useEffect(() => {
+      let isMounted = true;
+
+      async function initMap() {
+        if (typeof window === 'undefined' || !mapContainerRef.current) return;
+        if (mapInstanceRef.current) return;
+
+        const L = (await import('leaflet')).default;
+
+        // Fix Leaflet default icon paths
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        });
+
+        // Space Overview: Centered over Indian Subcontinent from orbit
+        const initialCenter: [number, number] = [22.5937, 78.9629];
+
+        const map = L.map(mapContainerRef.current, {
+          center: initialCenter,
+          zoom: 3,
+          minZoom: 2,
+          maxZoom: 19,
+          zoomControl: false,
+          attributionControl: false,
+          scrollWheelZoom: true,
+          dragging: true,
+          touchZoom: true,
+          doubleClickZoom: true,
+          preferCanvas: true,
+        });
+
+        // 1. ESRI High-Resolution World Imagery Tile Layer
+        const esriLayer = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri',
+          }
+        ).addTo(map);
+        layersRef.current['base'] = esriLayer;
+
+        // 2. Built-up Urban Sprawl Detection Polygon (Rose/Coral)
+        const urbanPolygon = L.polygon(
+          [
+            [28.6350, 77.2250],
+            [28.6650, 77.2750],
+            [28.6200, 77.3000],
+            [28.5950, 77.2400],
+          ],
+          {
+            color: '#f43f5e',
+            weight: 2.5,
+            fillColor: '#f43f5e',
+            fillOpacity: 0.35,
+            dashArray: '6, 6',
+          }
+        ).addTo(map);
+
+        urbanPolygon.bindPopup(`
+          <div style="font-family: monospace; font-size: 11px; color: #030712; padding: 4px;">
+            <strong style="color: #f43f5e;">BUILT-UP EXPANSION (+28.4%)</strong><br/>
+            Area: +14.62 km² Sprawl<br/>
+            Model: ChangeFormer-V2 (87.4% Conf)
+          </div>
+        `);
+        layersRef.current['urban'] = urbanPolygon;
+
+        // 3. Water Body Mask Polygon (Cyan)
+        const waterPolygon = L.polygon(
+          [
+            [28.6400, 77.2500],
+            [28.6520, 77.2580],
+            [28.6580, 77.2650],
+            [28.6450, 77.2690],
+            [28.6320, 77.2590],
+          ],
+          {
+            color: '#06b6d4',
+            weight: 2,
+            fillColor: '#06b6d4',
+            fillOpacity: 0.45,
+          }
+        ).addTo(map);
+
+        waterPolygon.bindPopup(`
+          <div style="font-family: monospace; font-size: 11px; color: #030712; padding: 4px;">
+            <strong style="color: #06b6d4;">WATER RESERVOIR / RIVER</strong><br/>
+            NDWI Index: 0.48 (High Moisture)<br/>
+            Extent: 5.7 km²
+          </div>
+        `);
+        layersRef.current['water'] = waterPolygon;
+
+        // 4. Change Difference Box (Amber)
+        const changeBounds: L.LatLngBoundsExpression = [
+          [28.6000, 77.2200],
+          [28.6700, 77.2900],
+        ];
+        const changeRect = L.rectangle(changeBounds, {
+          color: '#eab308',
+          weight: 1.5,
+          fillColor: '#eab308',
+          fillOpacity: 0.15,
+        }).addTo(map);
+        layersRef.current['change'] = changeRect;
+
+        // Listen to Map Move & Zoom
+        map.on('move', () => {
+          if (!isMounted) return;
+          const center = map.getCenter();
+          setCoords({ lat: +center.lat.toFixed(4), lng: +center.lng.toFixed(4) });
+        });
+
+        map.on('zoomend', () => {
+          if (!isMounted) return;
+          const z = map.getZoom();
+          setZoomLevel(z);
+          if (z >= 6) {
+            onDivedChange(true);
+          } else if (z <= 3) {
+            onDivedChange(false);
+          }
+        });
+
+        mapInstanceRef.current = map;
+      }
+
+      initMap();
+
+      return () => {
+        isMounted = false;
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+      };
+    }, [onDivedChange]);
+
+    // Continuous Flight Curve FlyTo
+    const flyToTarget = () => {
+      if (!mapInstanceRef.current) return;
+      onDivedChange(true);
+      mapInstanceRef.current.flyTo([28.6139, 77.2090], 14, {
+        duration: 3.5,
+        easeLinearity: 0.1,
+        animate: true,
+      });
+    };
+
+    const flyToSpace = () => {
+      if (!mapInstanceRef.current) return;
+      onDivedChange(false);
+      mapInstanceRef.current.flyTo([22.5937, 78.9629], 3, {
+        duration: 2.5,
+        easeLinearity: 0.1,
+        animate: true,
+      });
+    };
+
+    useImperativeHandle(ref, () => ({
+      flyToTarget,
+      flyToSpace,
+    }));
+
+    // Toggle Layer Visibility
+    const handleLayerToggle = (layerKey: 'base' | 'urban' | 'water' | 'change') => {
+      const updated = !activeLayers[layerKey];
+      setActiveLayers((prev) => ({ ...prev, [layerKey]: updated }));
+
+      const layer = layersRef.current[layerKey];
+      const map = mapInstanceRef.current;
+      if (!layer || !map) return;
+
+      if (updated) {
+        layer.addTo(map);
+      } else {
+        map.removeLayer(layer);
+      }
+    };
+
+    // Run Natural Language Query
+    const handleQuerySubmit = (e?: React.FormEvent, customQuery?: string) => {
+      if (e) e.preventDefault();
+      const queryText = customQuery || query;
+      setIsAnalyzing(true);
+
+      setTimeout(() => {
+        setIsAnalyzing(false);
+      }, 1400);
+    };
+
+    return (
+      <div className="relative w-full h-full bg-[#050814] overflow-hidden select-none">
+        
+        {/* Full-Screen Leaflet Map Container */}
+        <div ref={mapContainerRef} className="absolute inset-0 w-full h-full z-0 cursor-grab active:cursor-grabbing" />
+
+        {/* Laser Scanline during inference */}
+        {isAnalyzing && (
+          <div className="absolute inset-x-0 h-1 scanline z-20 animate-scan pointer-events-none" />
+        )}
+
+        {/* Map Workspace Controls (Revealed when zoomed in / dived) */}
+        <div
+          className={`transition-all duration-800 ease-in-out ${
+            isDived ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          {/* Top-Left Controls */}
+          <div className="absolute left-4 top-20 z-30 flex flex-col gap-2">
+            <div className="overflow-hidden rounded-xl border border-glass-border bg-[#050814]/85 backdrop-blur-md shadow-2xl">
+              <button
+                type="button"
+                aria-label="Zoom in"
+                onClick={() => mapInstanceRef.current?.zoomIn()}
+                className="flex h-9 w-9 items-center justify-center text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <Plus size={16} />
+              </button>
+              <div className="h-px bg-glass-border" />
+              <button
+                type="button"
+                aria-label="Zoom out"
+                onClick={() => mapInstanceRef.current?.zoomOut()}
+                className="flex h-9 w-9 items-center justify-center text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <Minus size={16} />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Recenter coordinates"
+              onClick={flyToTarget}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-accent/50 bg-cyan-accent/15 text-cyan-accent backdrop-blur-md transition-colors hover:bg-cyan-accent/30 shadow-2xl"
+              title="Recenter Target Region"
+            >
+              <Crosshair size={16} />
+            </button>
+
+            <button
+              type="button"
+              aria-label="Back to Orbit View"
+              onClick={flyToSpace}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-glass-border bg-[#050814]/85 text-purple-300 backdrop-blur-md transition-colors hover:bg-purple-500/20 shadow-2xl"
+              title="Return to Space Orbit"
+            >
+              <Globe2 size={16} />
+            </button>
+          </div>
+
+          {/* Top-Right Floating Layers Checklist */}
+          <div className="absolute right-4 top-20 z-30 w-56 rounded-2xl border border-glass-border bg-[#050814]/90 p-3.5 shadow-2xl backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={() => setLayersOpen(!layersOpen)}
+              className="flex w-full items-center justify-between text-xs font-mono font-bold text-white uppercase"
+            >
+              <span className="flex items-center gap-2">
+                <Layers size={14} className="text-cyan-accent" />
+                Satellite Layers
+              </span>
+              <ChevronDown
+                size={14}
+                className={`text-gray-400 transition-transform duration-300 ${
+                  layersOpen ? '' : '-rotate-90'
+                }`}
+              />
+            </button>
+
+            {layersOpen && (
+              <div className="mt-3 space-y-2 font-mono text-xs">
+                <label className="flex cursor-pointer items-center justify-between text-gray-300 hover:text-white transition-colors">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
+                    <span>Base Imagery</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={activeLayers.base}
+                    onChange={() => handleLayerToggle('base')}
+                    className="rounded border-gray-600 text-cyan-accent focus:ring-0"
+                  />
+                </label>
+
+                <label className="flex cursor-pointer items-center justify-between text-rose-300 hover:text-white transition-colors">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
+                    <span>Built-up (+28.4%)</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={activeLayers.urban}
+                    onChange={() => handleLayerToggle('urban')}
+                    className="rounded border-gray-600 text-rose-500 focus:ring-0"
+                  />
+                </label>
+
+                <label className="flex cursor-pointer items-center justify-between text-cyan-300 hover:text-white transition-colors">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+                    <span>Water Bodies</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={activeLayers.water}
+                    onChange={() => handleLayerToggle('water')}
+                    className="rounded border-gray-600 text-cyan-accent focus:ring-0"
+                  />
+                </label>
+
+                <label className="flex cursor-pointer items-center justify-between text-yellow-300 hover:text-white transition-colors">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                    <span>Change Mask</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={activeLayers.change}
+                    onChange={() => handleLayerToggle('change')}
+                    className="rounded border-gray-600 text-yellow-400 focus:ring-0"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom-Left Coordinate & Telemetry HUD */}
+          <div className="absolute left-4 bottom-24 z-30 flex items-center space-x-3 px-3.5 py-1.5 rounded-xl bg-[#050814]/90 border border-glass-border text-[10px] font-mono text-gray-300 backdrop-blur-md shadow-2xl">
+            <div>COORDS: <span className="text-cyan-accent font-bold">{coords.lat}° N, {coords.lng}° E</span></div>
+            <div className="h-3 w-px bg-white/20" />
+            <div>ZOOM: <span className="text-white font-bold">{zoomLevel}x</span></div>
+            <div className="h-3 w-px bg-white/20" />
+            <div>SENSOR: <span className="text-purple-300">ESRI World Imagery (Sub-meter GSD)</span></div>
+          </div>
+
+          {/* Floating Bottom "Ask Orbit IQ..." Query Bar */}
+          <div className="absolute inset-x-4 sm:inset-x-12 lg:inset-x-24 bottom-4 z-30 max-w-5xl mx-auto">
+            <div className="glass-panel p-3 sm:p-4 rounded-2xl border-cyan-accent/40 shadow-2xl space-y-2.5">
+              
+              <form onSubmit={(e) => handleQuerySubmit(e)} className="flex items-center gap-2 sm:gap-3">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-accent/30 bg-cyan-accent/15 text-cyan-accent shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+                  <Bot size={18} />
+                </div>
+
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Ask Orbit IQ about this region..."
+                    className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none font-sans"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isAnalyzing}
+                  className="inline-flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl gradient-cta px-4 sm:px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:brightness-110 disabled:opacity-70 cursor-pointer"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span className="hidden sm:inline">Analyzing</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Analyze</span>
+                      <ArrowRight size={14} />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Quick Query Preset Chips */}
+              <div className="hidden sm:flex flex-wrap items-center gap-2 pt-0.5 text-xs font-mono">
+                <span className="text-gray-400 text-[10px]">SUGGESTIONS:</span>
+                {[
+                  'Where did urban expansion occur?',
+                  'Highlight the water reservoir',
+                  'Detect flood inundation',
+                  'Compare 2022 vs 2026',
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => {
+                      setQuery(chip);
+                      handleQuerySubmit(undefined, chip);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-accent/15 border border-glass-border hover:border-cyan-accent/50 text-gray-300 hover:text-cyan-accent text-[11px] transition-colors cursor-pointer"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    );
+  }
+);
+
+export default InteractiveSatelliteMap;
