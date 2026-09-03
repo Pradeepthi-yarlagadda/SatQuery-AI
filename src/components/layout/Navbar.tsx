@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation';
 
 const navLinks = [
   { label: "Home", href: "/" },
-  { label: "Explore", href: "/workspace" },
-  { label: "Features", href: "/#features" },
+  { label: "Workspace", href: "/workspace" },
+  { label: "Chat", href: "/chat" },
+  { label: "History", href: "/history" },
   { label: "About", href: "/technology" },
 ];
 
@@ -32,9 +33,6 @@ export default function Navbar() {
   const pathname = usePathname();
   const isHome = pathname === '/';
 
-  // The home page renders its own full-screen header (with dive/back-to-orbit
-  // controls) inside a fixed overlay — this global navbar would sit on top of
-  // it at a higher z-index and intercept clicks meant for that page's own UI.
   if (isHome) return null;
 
   return (
@@ -68,7 +66,7 @@ export default function Navbar() {
             href="/workspace"
             className="inline-flex items-center justify-center rounded-full gradient-cta px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:shadow-primary/30 hover:-translate-y-0.5"
           >
-            Get Started
+            Mission Control
           </Link>
         </nav>
       </div>

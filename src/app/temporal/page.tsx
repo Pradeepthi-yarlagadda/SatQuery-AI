@@ -4,7 +4,7 @@ import React, { Suspense } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import AnalysisWorkspaceView from '@/components/analysis/AnalysisWorkspaceView';
 
-export default function WorkspacePage() {
+export default function TemporalPage() {
   return (
     <div className="min-h-screen bg-space text-foreground font-sans">
       <Navbar />
@@ -12,11 +12,11 @@ export default function WorkspacePage() {
         <Suspense
           fallback={
             <div className="flex h-64 items-center justify-center font-mono text-xs text-cyan-400">
-              LOADING ORBIT IQ WORKSPACE...
+              LOADING TEMPORAL ANALYSIS WORKSPACE...
             </div>
           }
         >
-          <AnalysisWorkspaceView />
+          <AnalysisWorkspaceView initialMode="temporal" />
         </Suspense>
       </div>
     </div>
