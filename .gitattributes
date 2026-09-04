@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.pt binary
+*.safetensors binary
+*.png binary
+*.jpg binary
+*.tif binary
+*.tiff binary
+*.parquet binary
