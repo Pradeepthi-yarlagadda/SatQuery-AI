@@ -1,0 +1,42 @@
+# SatQuery AI - Specialist Model Configurations
+
+models:
+  vqa:
+    name: "RS-VQA Reasoning Specialist"
+    benchmark: "RSVQA / VRSBench"
+    supported_sensors: ["Optical (RGB)", "Optical (Multispectral)", "SAR"]
+    default_confidence: 0.90
+    min_feature_size: 10
+    spectral_indices: ["NDVI", "NDWI", "NDBI"]
+
+  captioning:
+    name: "VRS-Captioner & LULC Descriptor"
+    benchmark: "VRSBench / BigEarthNet-19"
+    supported_sensors: ["Optical (RGB)", "Optical (Multispectral)", "SAR"]
+    max_tokens: 256
+    confidence_threshold: 0.85
+
+  grounding:
+    name: "VRS-Grounding Region Localizer"
+    benchmark: "VRSBench Text-Guided Grounding"
+    supported_sensors: ["Optical (RGB)", "Optical (Multispectral)"]
+    iou_threshold: 0.50
+    confidence_threshold: 0.55
+    max_detections: 20
+
+  change_analysis:
+    name: "CDVQA Multitemporal Change Engine"
+    benchmark: "CDVQA Benchmark"
+    supported_sensors: ["Bi-temporal Optical Pair", "Bi-temporal SAR Pair"]
+    sensitivity_threshold: 0.30
+    smoothing_sigma: 1.5
+    min_change_area_pixels: 50
+
+  optical_sar:
+    name: "Cross-Modal Optical-SAR Fusion Specialist"
+    benchmark: "ISRO Cartosat-2S + RISAT Evaluation Standard"
+    supported_sensors: ["Co-registered Optical + SAR Pair"]
+    sar_speckle_filter: "lee"
+    sar_filter_window: 5
+    water_threshold_db: -12.0
+    urban_threshold_db: -3.5

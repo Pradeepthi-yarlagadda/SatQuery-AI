@@ -1,0 +1,17 @@
+# SatQuery AI - Benchmark Evaluation Metrics
+
+evaluation:
+  rsvqa:
+    metrics: ["Overall Accuracy (OA)", "Average Accuracy (AA)", "Presence Accuracy", "Count Root-MSE"]
+    split: "test"
+
+  vrsbench:
+    vqa_metrics: ["Accuracy", "F1-Score"]
+    captioning_metrics: ["BLEU-4", "METEOR", "ROUGE-L", "CIDEr"]
+    grounding_metrics: ["mIoU", "AP50", "Precision@0.5"]
+
+  cdvqa:
+    metrics: ["Change Detection F1-Score", "VQA Accuracy", "Semantic Transition IoU"]
+
+  multimodal:
+    metrics: ["Optical-SAR Co-Registration Error", "Cloud-Penetration Precision", "Double-Bounce Verification Rate"]

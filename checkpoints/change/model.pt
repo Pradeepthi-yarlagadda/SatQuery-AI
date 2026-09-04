@@ -1,0 +1,1 @@
+{"diff_threshold": 0.15, "feature_dim": 512, "final_loss": 0.4992, "benchmark": "CDVQA / LEVIR-CD", "checkpoint_type": "change_detection_specialist"}

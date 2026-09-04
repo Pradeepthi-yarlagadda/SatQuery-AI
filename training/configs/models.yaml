@@ -1,0 +1,14 @@
+models_root: "A:/SatQuery-AI-Data/models"
+encoders:
+  resnet18_s2:
+    weights: "A:/SatQuery-AI-Data/models/resnet18-s2-v0.2.0/model.safetensors"
+    bands: 12
+    feature_dim: 512
+  resnet50_all:
+    weights: "A:/SatQuery-AI-Data/models/resnet50-all-v0.2.0/model.safetensors"
+    bands: 14
+    feature_dim: 2048
+vlm:
+  projector_dim: 768
+  lora_rank: 16
+  lora_alpha: 32

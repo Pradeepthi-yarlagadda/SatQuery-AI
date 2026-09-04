@@ -1,0 +1,23 @@
+# SatQuery AI - Agent Controller Configuration
+
+agent:
+  name: "SatQuery Controller"
+  version: "1.0.0"
+  timeout_seconds: 30
+  auditable_trace: true
+  
+  routing:
+    confidence_threshold: 0.75
+    fallback_task: "vqa"
+  
+  validation:
+    enforce_geotiff_crs: false
+    auto_resample_mismatch: true
+    max_resolution_pixels: [4096, 4096]
+    min_resolution_pixels: [64, 64]
+  
+  evidence:
+    render_bounding_boxes: true
+    render_change_heatmap: true
+    render_fused_composite: true
+    confidence_calibration: true

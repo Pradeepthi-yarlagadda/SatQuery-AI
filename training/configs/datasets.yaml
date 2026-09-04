@@ -1,0 +1,28 @@
+data_root: "A:/SatQuery-AI-Data"
+
+datasets:
+  vrsbench:
+    root: "A:/SatQuery-AI-Data/VRSBench"
+    train_json: "A:/SatQuery-AI-Data/VRSBench/VRSBench_train.json"
+    val_vqa: "A:/SatQuery-AI-Data/VRSBench/VRSBench_EVAL_vqa.json"
+    val_caption: "A:/SatQuery-AI-Data/VRSBench/VRSBench_EVAL_Cap.json"
+    val_grounding: "A:/SatQuery-AI-Data/VRSBench/VRSBench_EVAL_referring.json"
+    train_images: "A:/SatQuery-AI-Data/VRSBench/Images_train"
+    val_images: "A:/SatQuery-AI-Data/VRSBench/Images_val"
+    image_resolution: [512, 512]
+  rsvqa_hr:
+    root: "A:/SatQuery-AI-Data/RSVQA-HR"
+    train_questions: "A:/SatQuery-AI-Data/RSVQA-HR/USGS_split_train_questions.json"
+    train_answers: "A:/SatQuery-AI-Data/RSVQA-HR/USGS_split_train_answers.json"
+    train_images: "A:/SatQuery-AI-Data/RSVQA-HR/USGS_split_train_images.json"
+  cdvqa:
+    root: "A:/SatQuery-AI-Data/CDVQA"
+    train_questions: "A:/SatQuery-AI-Data/CDVQA/Train_questions.json"
+    train_answers: "A:/SatQuery-AI-Data/CDVQA/Train_answers.json"
+    train_images: "A:/SatQuery-AI-Data/CDVQA/Train_images.json"
+  bigearthnet_txt:
+    root: "A:/SatQuery-AI-Data/BigEarthNet.txt"
+    parquet: "A:/SatQuery-AI-Data/BigEarthNet.txt/BigEarthNet.txt.parquet"
+  bigearthnet_v2:
+    root: "A:/SatQuery-AI-Data/BigEarthNet-v2"
+    metadata_parquet: "A:/SatQuery-AI-Data/BigEarthNet-v2/metadata.parquet"

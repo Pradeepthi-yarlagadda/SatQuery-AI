@@ -1,0 +1,13 @@
+agents:
+  single_vqa:
+    checkpoint_dir: "training/checkpoints/vqa"
+  captioning:
+    checkpoint_dir: "training/checkpoints/captioning"
+  grounding:
+    checkpoint_dir: "training/checkpoints/grounding"
+  change_detection:
+    checkpoint_dir: "training/checkpoints/change"
+  change_vqa:
+    checkpoint_dir: "training/checkpoints/change"
+  optical_sar:
+    checkpoint_dir: "training/checkpoints/optical_sar"

@@ -1,0 +1,54 @@
+# SatQuery AI - Dataset Configuration
+# Aligned with ISRO / SAC Evaluation Standard (SIH26167)
+
+datasets:
+  bigearthnet_txt:
+    description: "Multimodal (Optical + SAR) representation benchmark for remote sensing adaptation"
+    modality: "Multispectral (Sentinel-2) + Dual-Pol SAR (Sentinel-1)"
+    classes: 19
+    taxonomy: "CORINE Land Cover"
+    paths:
+      root: "./data/bigearthnet_txt"
+      original: "./data/bigearthnet_txt/original"
+      processed:
+        train: "./data/bigearthnet_txt/processed/train"
+        val: "./data/bigearthnet_txt/processed/val"
+        test: "./data/bigearthnet_txt/processed/test"
+    target_patch_size: [120, 120]
+
+  vrsbench:
+    description: "High-resolution Visual Remote Sensing Benchmark for VQA, Captioning, and Visual Grounding"
+    modality: "High-Resolution Optical"
+    tasks: ["vqa", "captioning", "grounding"]
+    paths:
+      root: "./data/vrsbench"
+      original: "./data/vrsbench/original"
+      processed:
+        vqa: "./data/vrsbench/processed/vqa"
+        captioning: "./data/vrsbench/processed/captioning"
+        grounding: "./data/vrsbench/processed/grounding"
+    target_patch_size: [512, 512]
+
+  rsvqa_hr:
+    description: "Remote Sensing Visual Question Answering (High Resolution) for presence, count, comparison"
+    modality: "Aerial & High-Res Satellite Optical"
+    paths:
+      root: "./data/rsvqa_hr"
+      original: "./data/rsvqa_hr/original"
+      processed:
+        train: "./data/rsvqa_hr/processed/train"
+        val: "./data/rsvqa_hr/processed/val"
+        test: "./data/rsvqa_hr/processed/test"
+    target_patch_size: [512, 512]
+
+  cdvqa:
+    description: "Change Detection Visual Question Answering for bi-temporal satellite image pairs"
+    modality: "Bi-Temporal Optical Pairs (Time 1 vs Time 2)"
+    paths:
+      root: "./data/cdvqa"
+      original: "./data/cdvqa/original"
+      processed:
+        train: "./data/cdvqa/processed/train"
+        val: "./data/cdvqa/processed/val"
+        test: "./data/cdvqa/processed/test"
+    target_patch_size: [512, 512]
