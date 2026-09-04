@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Orbit-IQ Satellite Intelligence Dossier</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #030712; color: #f9fafb; margin: 40px; }
+        .header { border-bottom: 2px solid #06b6d4; padding-bottom: 20px; margin-bottom: 30px; }
+        .badge { background: #0e7490; color: #e0f2fe; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+        .card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛰️ Orbit-IQ Geospatial Intelligence Dossier</h1>
+        <p>ISRO / Space Applications Centre (SIH26167)</p>
+    </div>
+    <div class="card">
+        <h3>Mission Query</h3>
+        <p>{{ query }}</p>
+        <p><strong>Dispatched Specialist:</strong> <span class="badge">{{ tool_name }}</span></p>
+        <p><strong>System Confidence:</strong> {{ confidence }}%</p>
+    </div>
+</body>
+</html>
