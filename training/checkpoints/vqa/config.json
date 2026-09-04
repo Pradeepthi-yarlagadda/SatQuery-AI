@@ -1,5 +1,8 @@
 {
-  "model_name": "RSVQA-Specialist",
-  "version": "1.0.0",
-  "status": "trained"
+  "model_name": "RSVQA-Specialist-PyTorch",
+  "version": "2.0.0",
+  "vocab_size": 119,
+  "num_classes": 28,
+  "final_loss": 3.0751,
+  "status": "trained_real_gradients"
 }

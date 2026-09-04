@@ -1,24 +1,59 @@
-import numpy as np
-from typing import Dict, Any, Tuple
+﻿"""
+SatQuery AI - Bi-Temporal Siamese Change Detection Network (PyTorch Native)
+Analyzes pre-event (T1) and post-event (T2) satellite image pairs.
+"""
 
-class SiameseTemporalModel:
-    """
-    Siamese difference network computing temporal delta embeddings between T1 and T2 rasters.
-    """
-    def __init__(self, feature_dim: int = 512, diff_threshold: float = 0.15):
-        self.feature_dim = feature_dim
-        self.diff_threshold = diff_threshold
+import torch
+import torch.nn as nn
+from .rs_encoder import ResNet18RS
 
-    def compute_difference(self, feat_t1: np.ndarray, feat_t2: np.ndarray) -> Dict[str, Any]:
-        delta_vec = np.abs(feat_t2 - feat_t1)
-        l2_dist = float(np.linalg.norm(delta_vec))
-        cos_sim = float(np.dot(feat_t1, feat_t2) / (np.linalg.norm(feat_t1) * np.linalg.norm(feat_t2) + 1e-7))
-        is_changed = (1.0 - cos_sim) > self.diff_threshold
+
+class SiameseChangeModel(nn.Module):
+    def __init__(self, in_channels: int = 10, embed_dim: int = 512, num_transitions: int = 5):
+        super().__init__()
+        self.encoder = ResNet18RS.load_pretrained()
+        
+        # Dual-temporal difference projection
+        # Input has 4 feature interactions: [f1, f2, abs(f2 - f1), f1 * f2] -> 512 * 4 = 2048
+        self.diff_head = nn.Sequential(
+            nn.Linear(embed_dim * 4, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(512, 256),
+            nn.ReLU()
+        )
+        
+        # 1. Binary change probability & magnitude [0, 1]
+        self.change_magnitude = nn.Sequential(
+            nn.Linear(256, 1),
+            nn.Sigmoid()
+        )
+        
+        # 2. Semantic transition multi-class classifier
+        self.transition_classifier = nn.Linear(256, num_transitions)
+
+    def forward(self, img_t1: torch.Tensor, img_t2: torch.Tensor) -> Dict[str, torch.Tensor]:
+        f1 = self.encoder(img_t1)  # (B, 512)
+        f2 = self.encoder(img_t2)  # (B, 512)
+
+        diff = torch.abs(f2 - f1)
+        prod = f1 * f2
+        combined = torch.cat([f1, f2, diff, prod], dim=1)  # (B, 2048)
+
+        latent = self.diff_head(combined)  # (B, 256)
+        magnitude = self.change_magnitude(latent)  # (B, 1)
+        transitions = self.transition_classifier(latent)  # (B, num_transitions)
 
         return {
-            "delta_vector": delta_vec,
-            "l2_distance": round(l2_dist, 4),
-            "cosine_similarity": round(cos_sim, 4),
-            "change_detected": is_changed,
-            "change_magnitude_percent": round(min(100.0, (1.0 - cos_sim) * 100), 2)
+            "change_magnitude": magnitude,
+            "transition_logits": transitions,
+            "latent_delta": latent
         }
+
+
+class TemporalModel(SiameseChangeModel):
+    pass
+
+SiameseTemporalModel = SiameseChangeModel
+

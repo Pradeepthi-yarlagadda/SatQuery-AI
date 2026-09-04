@@ -1,5 +1,7 @@
 {
-  "model_name": "Grounding-Specialist",
-  "version": "1.0.0",
-  "status": "trained"
+  "model_name": "Region-Grounding-PyTorch",
+  "version": "2.0.0",
+  "vocab_size": 151,
+  "final_loss": 0.0343,
+  "status": "trained_real_gradients"
 }

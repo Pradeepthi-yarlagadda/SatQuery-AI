@@ -133,6 +133,7 @@ def _resolve_payloads(req: AnalysisRequest) -> List[Dict[str, Any]]:
     return payloads
 
 
+@router.post("/api/analyze", response_model=AnalysisResponse)
 @router.post("/api/analysis", response_model=AnalysisResponse)
 @router.post("/v1/orbit-iq/analyze", response_model=AnalysisResponse)
 @router.post("/api/v1/orbit-iq/analyze", response_model=AnalysisResponse)

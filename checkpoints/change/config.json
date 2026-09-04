@@ -1,5 +1,6 @@
 {
-  "model_name": "Change-Detection-Specialist",
-  "version": "1.0.0",
-  "status": "trained"
+  "model_name": "Siamese-Change-Detector-PyTorch",
+  "version": "2.0.0",
+  "final_loss": 1.4567,
+  "status": "trained_real_gradients"
 }

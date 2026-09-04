@@ -1,5 +1,7 @@
 {
-  "model_name": "Captioning-Specialist",
-  "version": "1.0.0",
-  "status": "trained"
+  "model_name": "Scene-Captioner-PyTorch",
+  "version": "2.0.0",
+  "vocab_size": 361,
+  "final_loss": 5.631,
+  "status": "trained_real_gradients"
 }

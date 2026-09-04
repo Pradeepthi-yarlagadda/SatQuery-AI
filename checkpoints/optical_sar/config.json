@@ -1,5 +1,6 @@
 {
-  "model_name": "Optical-SAR-Specialist",
-  "version": "1.0.0",
-  "status": "trained"
+  "model_name": "Optical-SAR-Fusion-PyTorch",
+  "version": "2.0.0",
+  "final_loss": 0.412,
+  "status": "trained_real_gradients"
 }

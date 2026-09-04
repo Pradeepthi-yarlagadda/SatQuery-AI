@@ -1,0 +1,9 @@
+{
+  "f1_score": 0.0,
+  "precision": 0.0,
+  "recall": 0.0,
+  "transition_accuracy": 21.88,
+  "magnitude_mae": 0.4162,
+  "samples": 32,
+  "status": "verified"
+}

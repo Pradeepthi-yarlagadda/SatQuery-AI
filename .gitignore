@@ -30,6 +30,8 @@ ENV/
 
 # Temporary generated artifacts
 backend/app/storage/reports/*.pdf
+backend/app/storage/reports/*.json
+backend/app/storage/reports/*.html
 backend/app/storage/uploads/*
 !backend/app/storage/reports/.gitkeep
 !backend/app/storage/uploads/.gitkeep

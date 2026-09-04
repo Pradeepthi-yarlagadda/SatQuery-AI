@@ -1,0 +1,28 @@
+{
+  "model_name": "BigEarthNet-Domain-Adaptation-PyTorch",
+  "version": "2.0.0",
+  "num_classes": 19,
+  "classes": [
+    "Agro-forestry areas",
+    "Arable land",
+    "Beaches, dunes, sands",
+    "Broad-leaved forest",
+    "Coastal wetlands",
+    "Complex cultivation patterns",
+    "Coniferous forest",
+    "Industrial or commercial units",
+    "Inland waters",
+    "Inland wetlands",
+    "Land principally occupied by agriculture, with significant areas of natural vegetation",
+    "Marine waters",
+    "Mixed forest",
+    "Moors, heathland and sclerophyllous vegetation",
+    "Natural grassland and sparsely vegetated areas",
+    "Pastures",
+    "Permanent crops",
+    "Transitional woodland, shrub",
+    "Urban fabric"
+  ],
+  "final_loss": 0.6483,
+  "status": "adapted_real_gradients"
+}

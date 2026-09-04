@@ -1,0 +1,6 @@
+{
+  "mIoU": 0.0,
+  "smooth_l1_loss": 0.0383,
+  "samples": 32,
+  "status": "verified"
+}
