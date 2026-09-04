@@ -13,7 +13,11 @@ import {
   Loader2,
   Rotate3d,
   ArrowLeft,
+  Search,
+  MapPin,
+  X,
 } from 'lucide-react';
+import { geocodeLocation, GeocodedLocation } from '@/utils/geoCoder';
 
 export interface EarthGlobeMapHandle {
   diveToTarget: () => void;
@@ -36,6 +40,14 @@ const EarthGlobeMap = forwardRef<EarthGlobeMapHandle, EarthGlobeMapProps>(functi
   const [currentPitch, setCurrentPitch] = useState(0);
   const [coords, setCoords] = useState({ lng: 78.9629, lat: 20.5937 });
   const [controlsVisible, setControlsVisible] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [searchFeedback, setSearchFeedback] = useState<{
+    type: 'success' | 'error' | 'info';
+    text: string;
+  } | null>(null);
+  const [activeLocationTitle, setActiveLocationTitle] = useState<string | null>(null);
 
   const [layersOpen, setLayersOpen] = useState(true);
   const [activeLayers, setActiveLayers] = useState({
@@ -321,14 +333,144 @@ const EarthGlobeMap = forwardRef<EarthGlobeMapHandle, EarthGlobeMapProps>(functi
     });
   };
 
-  // Run Query with Scanline Trigger
-  const handleQuery = (e?: React.FormEvent, customQuery?: string) => {
+  // Add or update target radar pin
+  const updateTargetPin = (lng: number, lat: number, title: string) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    try {
+      const geojson: any = {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [lng, lat],
+            },
+            properties: {
+              title: title,
+            },
+          },
+        ],
+      };
+
+      if (map.getSource('search-target-src')) {
+        map.getSource('search-target-src').setData(geojson);
+      } else {
+        map.addSource('search-target-src', {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        map.addLayer({
+          id: 'search-target-glow',
+          type: 'circle',
+          source: 'search-target-src',
+          paint: {
+            'circle-radius': 22,
+            'circle-color': '#06b6d4',
+            'circle-opacity': 0.35,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#22d3ee',
+          },
+        });
+
+        map.addLayer({
+          id: 'search-target-point',
+          type: 'circle',
+          source: 'search-target-src',
+          paint: {
+            'circle-radius': 6,
+            'circle-color': '#ffffff',
+            'circle-stroke-width': 2.5,
+            'circle-stroke-color': '#0891b2',
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('Could not update pin:', err);
+    }
+  };
+
+  const flyToLocation = (loc: GeocodedLocation) => {
+    setActiveLocationTitle(loc.name);
+    setCoords({ lng: +loc.lng.toFixed(4), lat: +loc.lat.toFixed(4) });
+    if (onDivedChange) onDivedChange(true);
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.resize();
+      mapInstanceRef.current.flyTo({
+        center: [loc.lng, loc.lat],
+        zoom: loc.zoom || 13,
+        pitch: loc.pitch ?? 45,
+        bearing: loc.bearing ?? 0,
+        duration: 3200,
+        essential: true,
+      });
+
+      updateTargetPin(loc.lng, loc.lat, loc.name);
+      setControlsVisible(true);
+    }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const queryStr = searchQuery.trim();
+    if (!queryStr) return;
+
+    setIsSearchingLocation(true);
+    setSearchFeedback({ type: 'info', text: `Locating "${queryStr}"...` });
+
+    try {
+      const loc = await geocodeLocation(queryStr);
+      if (loc) {
+        flyToLocation(loc);
+        setSearchFeedback({
+          type: 'success',
+          text: `📍 Navigated to: ${loc.name} (${loc.lat.toFixed(4)}° N, ${loc.lng.toFixed(4)}° E)`,
+        });
+      } else {
+        setSearchFeedback({
+          type: 'error',
+          text: `Location "${queryStr}" not found. Try a city or coordinates.`,
+        });
+      }
+    } catch (err) {
+      setSearchFeedback({
+        type: 'error',
+        text: `Error locating "${queryStr}".`,
+      });
+    } finally {
+      setIsSearchingLocation(false);
+      setTimeout(() => setSearchFeedback(null), 6000);
+    }
+  };
+
+  // Run Query with Location-Aware Flight & AI Scanline Trigger
+  const handleQuery = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
+    const queryText = (customQuery || query).trim();
+    if (!queryText) return;
+
     setIsAnalyzing(true);
+
+    try {
+      const loc = await geocodeLocation(queryText);
+      if (loc) {
+        flyToLocation(loc);
+        setSearchFeedback({
+          type: 'success',
+          text: `🎯 Focused on ${loc.name} for spatial AI inference`,
+        });
+        setTimeout(() => setSearchFeedback(null), 5000);
+      }
+    } catch (err) {
+      // Non-spatial query
+    }
 
     setTimeout(() => {
       setIsAnalyzing(false);
-    }, 1400);
+    }, 1600);
   };
 
   return (
@@ -404,6 +546,61 @@ const EarthGlobeMap = forwardRef<EarthGlobeMapHandle, EarthGlobeMapProps>(functi
           </button>
         </div>
 
+        {/* Top-Center Global Place Search Bar */}
+        <div className="absolute left-1/2 top-20 -translate-x-1/2 z-30 w-full max-w-lg px-4">
+          <form onSubmit={handleSearch} className="relative flex items-center">
+            <div className="absolute left-3.5 text-gray-400 pointer-events-none">
+              <Search size={15} />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search any place or coordinates (e.g. Delhi, Mumbai, Sriharikota)..."
+              className="w-full rounded-2xl border border-glass-border bg-[#050814]/90 pl-10 pr-28 py-2.5 text-xs text-white placeholder-gray-400 backdrop-blur-xl shadow-2xl focus:border-cyan-accent/50 focus:outline-none font-sans"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-24 text-gray-400 hover:text-white p-1 transition-colors"
+                title="Clear input"
+              >
+                <X size={13} />
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={isSearchingLocation}
+              className="absolute right-2 rounded-xl gradient-cta px-3 py-1.5 text-[11px] font-semibold text-white cursor-pointer hover:brightness-110 disabled:opacity-70 flex items-center gap-1.5"
+            >
+              {isSearchingLocation ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  <span>Locating</span>
+                </>
+              ) : (
+                <span>Fly There</span>
+              )}
+            </button>
+          </form>
+
+          {/* Search Feedback Notification Banner */}
+          {searchFeedback && (
+            <div
+              className={`mt-2 flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono backdrop-blur-xl border shadow-xl transition-all ${
+                searchFeedback.type === 'success'
+                  ? 'bg-emerald-950/85 border-emerald-500/50 text-emerald-300'
+                  : searchFeedback.type === 'error'
+                  ? 'bg-rose-950/85 border-rose-500/50 text-rose-300'
+                  : 'bg-cyan-950/85 border-cyan-500/50 text-cyan-300'
+              }`}
+            >
+              <span>{searchFeedback.text}</span>
+            </div>
+          )}
+        </div>
+
         {/* Top-Right Floating Layers Control Card */}
         <div className="absolute right-8 top-20 z-30 w-56 rounded-2xl border border-glass-border bg-[#050814]/90 p-3.5 shadow-2xl backdrop-blur-xl">
           <button
@@ -469,6 +666,15 @@ const EarthGlobeMap = forwardRef<EarthGlobeMapHandle, EarthGlobeMapProps>(functi
 
         {/* Bottom-Left Coordinate & Telemetry HUD */}
         <div className="absolute left-8 bottom-24 z-30 flex items-center space-x-3 px-3.5 py-1.5 rounded-xl bg-[#050814]/90 border border-glass-border text-[10px] font-mono text-gray-300 backdrop-blur-md shadow-2xl">
+          {activeLocationTitle && (
+            <>
+              <div className="flex items-center gap-1">
+                <MapPin size={11} className="text-cyan-accent" />
+                <span className="text-cyan-accent font-bold max-w-[160px] truncate">{activeLocationTitle}</span>
+              </div>
+              <div className="h-3 w-px bg-white/20" />
+            </>
+          )}
           <div>COORDS: <span className="text-cyan-accent font-bold">{coords.lat}° N, {coords.lng}° E</span></div>
           <div className="h-3 w-px bg-white/20" />
           <div>ZOOM: <span className="text-white font-bold">{currentZoom}x</span></div>

@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
+import { geocodeLocation } from '@/utils/geoCoder';
 
 export interface SatelliteMapHandle {
   flyToTarget: () => void;
@@ -227,15 +228,27 @@ const InteractiveSatelliteMap = forwardRef<SatelliteMapHandle, InteractiveSatell
       }
     };
 
-    // Run Natural Language Query
-    const handleQuerySubmit = (e?: React.FormEvent, customQuery?: string) => {
+    // Run Natural Language Location & Inference Query
+    const handleQuerySubmit = async (e?: React.FormEvent, customQuery?: string) => {
       if (e) e.preventDefault();
-      const queryText = customQuery || query;
+      const queryText = (customQuery || query).trim();
+      if (!queryText) return;
+
       setIsAnalyzing(true);
+
+      try {
+        const loc = await geocodeLocation(queryText);
+        if (loc && mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo([loc.lat, loc.lng], loc.zoom || 13, { duration: 2.5 });
+          setCoords({ lat: loc.lat, lng: loc.lng });
+        }
+      } catch (err) {
+        // Non-spatial query
+      }
 
       setTimeout(() => {
         setIsAnalyzing(false);
-      }, 1400);
+      }, 1600);
     };
 
     return (

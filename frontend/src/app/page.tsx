@@ -25,21 +25,26 @@ import {
   Globe2,
   Play,
   Pause,
+  MapPin,
+  X,
 } from 'lucide-react';
+import { geocodeLocation, GeocodedLocation } from '@/utils/geoCoder';
 
 const GOOGLE_EARTH_URL =
   'https://earth.google.com/web/@22.88899785,75.2951107,3744.95251812a,16284957.7173543d,35y,344.45125297h,0t,0r/data=CgRCAggBOgMKATBCAggASg0I____________ARAA?authuser=0';
 
 // Global Landmark Presets for 3D Earth Exploration
 const WORLD_PRESETS = [
-  { name: 'India (Center)', coords: [75.2951, 22.8890], zoom: 4.5, pitch: 30 },
+  { name: 'New Delhi', coords: [77.2090, 28.6139], zoom: 13.2, pitch: 45 },
+  { name: 'Mumbai', coords: [72.8347, 18.9220], zoom: 13.2, pitch: 45 },
+  { name: 'Bengaluru', coords: [77.5946, 12.9716], zoom: 13.5, pitch: 45 },
+  { name: 'Hyderabad', coords: [78.4867, 17.3850], zoom: 14.2, pitch: 45 },
+  { name: 'Sriharikota (ISRO)', coords: [80.2300, 13.7200], zoom: 14.5, pitch: 50 },
   { name: 'Himalayas / Everest', coords: [86.9250, 27.9881], zoom: 12.5, pitch: 60 },
-  { name: 'Hyderabad (Urban)', coords: [78.4867, 17.3850], zoom: 14.2, pitch: 45 },
-  { name: 'Dubai Palm Jumeirah', coords: [55.1384, 25.1124], zoom: 13.5, pitch: 50 },
-  { name: 'Grand Canyon, USA', coords: [-112.1401, 36.0544], zoom: 12.8, pitch: 55 },
+  { name: 'Dubai Palm', coords: [55.1384, 25.1124], zoom: 13.5, pitch: 50 },
   { name: 'Tokyo, Japan', coords: [139.6917, 35.6895], zoom: 13.8, pitch: 45 },
   { name: 'Paris, France', coords: [2.3522, 48.8566], zoom: 14.0, pitch: 40 },
-  { name: 'New York City, USA', coords: [-74.0060, 40.7128], zoom: 14.5, pitch: 50 },
+  { name: 'New York City', coords: [-74.0060, 40.7128], zoom: 14.5, pitch: 50 },
 ];
 
 const featureCards = [
@@ -83,6 +88,12 @@ export default function LandingPage() {
   const [isAutoSpinning, setIsAutoSpinning] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [searchFeedback, setSearchFeedback] = useState<{
+    type: 'success' | 'error' | 'info';
+    text: string;
+  } | null>(null);
+  const [activeLocationTitle, setActiveLocationTitle] = useState<string | null>(null);
   const [layersOpen, setLayersOpen] = useState(true);
   const [activeLayers, setActiveLayers] = useState({
     base: true,
@@ -354,10 +365,100 @@ export default function LandingPage() {
     }
   };
 
+  // Add or update glowing target radar pin marker on MapLibre globe
+  const updateTargetPin = (lng: number, lat: number, title: string) => {
+    const map = mapRef.current;
+    if (!map) return;
+    try {
+      const geojson: any = {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [lng, lat],
+            },
+            properties: {
+              title: title,
+            },
+          },
+        ],
+      };
+
+      if (map.getSource('search-target-src')) {
+        map.getSource('search-target-src').setData(geojson);
+      } else {
+        map.addSource('search-target-src', {
+          type: 'geojson',
+          data: geojson,
+        });
+
+        // Pulsing radar glow circle
+        map.addLayer({
+          id: 'search-target-glow',
+          type: 'circle',
+          source: 'search-target-src',
+          paint: {
+            'circle-radius': 22,
+            'circle-color': '#06b6d4',
+            'circle-opacity': 0.35,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#22d3ee',
+          },
+        });
+
+        // Center pin marker point
+        map.addLayer({
+          id: 'search-target-point',
+          type: 'circle',
+          source: 'search-target-src',
+          paint: {
+            'circle-radius': 6,
+            'circle-color': '#ffffff',
+            'circle-stroke-width': 2.5,
+            'circle-stroke-color': '#0891b2',
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('Could not update map target pin:', err);
+    }
+  };
+
+  // Fly to Geocoded Location
+  const flyToLocation = (loc: GeocodedLocation) => {
+    stopSpin();
+    setIsDiving(true);
+    setActiveLocationTitle(loc.name);
+    setCoords({ lng: +loc.lng.toFixed(4), lat: +loc.lat.toFixed(4) });
+
+    if (mapRef.current) {
+      mapRef.current.resize();
+      mapRef.current.flyTo({
+        center: [loc.lng, loc.lat],
+        zoom: loc.zoom || 13,
+        pitch: loc.pitch ?? 45,
+        bearing: loc.bearing ?? 0,
+        duration: 3200,
+        essential: true,
+      });
+
+      updateTargetPin(loc.lng, loc.lat, loc.name);
+
+      setTimeout(() => {
+        setControlsVisible(true);
+      }, 2900);
+    }
+  };
+
   // Fly to Any Selected Preset Landmark across the World
   const flyToPreset = (preset: typeof WORLD_PRESETS[0]) => {
     stopSpin();
     setIsDiving(true);
+    setActiveLocationTitle(preset.name);
+    setCoords({ lng: +preset.coords[0].toFixed(4), lat: +preset.coords[1].toFixed(4) });
+
     if (mapRef.current) {
       mapRef.current.flyTo({
         center: preset.coords,
@@ -367,36 +468,48 @@ export default function LandingPage() {
         duration: 3200,
         essential: true,
       });
+
+      updateTargetPin(preset.coords[0], preset.coords[1], preset.name);
+
       setTimeout(() => {
         setControlsVisible(true);
       }, 2900);
     }
   };
 
-  // Search Global City / Coordinates
-  const handleSearch = (e: React.FormEvent) => {
+  // Search Any Place, City, Landmark, or Coordinates Globally
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
+    const queryStr = searchQuery.trim();
+    if (!queryStr) return;
 
-    const matched = WORLD_PRESETS.find((p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    setIsSearchingLocation(true);
+    setSearchFeedback({ type: 'info', text: `Locating "${queryStr}"...` });
 
-    if (matched) {
-      flyToPreset(matched);
-    } else {
-      // Freeform Coordinate Search e.g. "48.85, 2.35"
-      const parts = searchQuery.split(',').map((s) => parseFloat(s.trim()));
-      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-        stopSpin();
-        setIsDiving(true);
-        mapRef.current?.flyTo({
-          center: [parts[1], parts[0]],
-          zoom: 12,
-          pitch: 45,
-          duration: 3000,
+    try {
+      const loc = await geocodeLocation(queryStr);
+      if (loc) {
+        flyToLocation(loc);
+        setSearchFeedback({
+          type: 'success',
+          text: `📍 Navigated to: ${loc.name} (${loc.lat.toFixed(4)}° N, ${loc.lng.toFixed(4)}° E)`,
+        });
+      } else {
+        setSearchFeedback({
+          type: 'error',
+          text: `Location "${queryStr}" not found. Try entering a city name or coordinates (e.g. 28.61, 77.20)`,
         });
       }
+    } catch (err) {
+      setSearchFeedback({
+        type: 'error',
+        text: `Error locating "${queryStr}". Please try again.`,
+      });
+    } finally {
+      setIsSearchingLocation(false);
+      setTimeout(() => {
+        setSearchFeedback(null);
+      }, 6000);
     }
   };
 
@@ -405,6 +518,7 @@ export default function LandingPage() {
     stopSpin();
     setControlsVisible(false);
     setIsDiving(false);
+    setActiveLocationTitle(null);
     if (mapRef.current) {
       mapRef.current.flyTo({
         center: [75.2951, 22.8890], // Exact Google Earth user coordinates
@@ -458,14 +572,32 @@ export default function LandingPage() {
     }
   };
 
-  // Run Query with Scanline Trigger
-  const handleQuery = (e?: React.FormEvent, customQuery?: string) => {
+  // Run Query with Location-Aware Flight & AI Scanline Trigger
+  const handleQuery = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
+    const queryText = (customQuery || query).trim();
+    if (!queryText) return;
+
     setIsAnalyzing(true);
+
+    // Extract any location mentioned in the question and fly there
+    try {
+      const loc = await geocodeLocation(queryText);
+      if (loc) {
+        flyToLocation(loc);
+        setSearchFeedback({
+          type: 'success',
+          text: `🎯 Focused on ${loc.name} for spatial AI inference`,
+        });
+        setTimeout(() => setSearchFeedback(null), 5000);
+      }
+    } catch (err) {
+      // Non-spatial query: continue analysis
+    }
 
     setTimeout(() => {
       setIsAnalyzing(false);
-    }, 1400);
+    }, 1600);
   };
 
   return (
@@ -751,20 +883,53 @@ export default function LandingPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search any place or coordinates (e.g. Tokyo, Paris, Himalayas, Dubai)..."
-              className="w-full rounded-2xl border border-glass-border bg-[#050814]/90 pl-10 pr-24 py-2.5 text-xs text-white placeholder-gray-400 backdrop-blur-xl shadow-2xl focus:border-cyan-400/50 focus:outline-none font-sans"
+              placeholder="Search any city, landmark, or coordinates (e.g. Delhi, Mumbai, Sriharikota, Tokyo, Paris)..."
+              className="w-full rounded-2xl border border-glass-border bg-[#050814]/90 pl-10 pr-28 py-2.5 text-xs text-white placeholder-gray-400 backdrop-blur-xl shadow-2xl focus:border-cyan-400/50 focus:outline-none font-sans"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-24 text-gray-400 hover:text-white p-1 transition-colors"
+                title="Clear input"
+              >
+                <X size={13} />
+              </button>
+            )}
             <button
               type="submit"
-              className="absolute right-2 rounded-xl gradient-cta px-3 py-1.5 text-[11px] font-semibold text-white cursor-pointer hover:brightness-110"
+              disabled={isSearchingLocation}
+              className="absolute right-2 rounded-xl gradient-cta px-3 py-1.5 text-[11px] font-semibold text-white cursor-pointer hover:brightness-110 disabled:opacity-70 flex items-center gap-1.5"
             >
-              Fly There
+              {isSearchingLocation ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  <span>Locating</span>
+                </>
+              ) : (
+                <span>Fly There</span>
+              )}
             </button>
           </form>
 
+          {/* Search Feedback Notification Banner */}
+          {searchFeedback && (
+            <div
+              className={`mt-2 flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono backdrop-blur-xl border shadow-xl transition-all ${
+                searchFeedback.type === 'success'
+                  ? 'bg-emerald-950/85 border-emerald-500/50 text-emerald-300'
+                  : searchFeedback.type === 'error'
+                  ? 'bg-rose-950/85 border-rose-500/50 text-rose-300'
+                  : 'bg-cyan-950/85 border-cyan-500/50 text-cyan-300'
+              }`}
+            >
+              <span>{searchFeedback.text}</span>
+            </div>
+          )}
+
           {/* Quick Preset Location Chips */}
           <div className="flex items-center justify-center gap-1.5 mt-2 overflow-x-auto pb-1 no-scrollbar">
-            {WORLD_PRESETS.slice(0, 5).map((p) => (
+            {WORLD_PRESETS.map((p) => (
               <button
                 key={p.name}
                 type="button"
@@ -842,6 +1007,15 @@ export default function LandingPage() {
 
         {/* Bottom-Left Coordinate & Telemetry HUD */}
         <div className="absolute left-6 bottom-24 z-30 flex items-center space-x-3 px-3.5 py-1.5 rounded-xl bg-[#050814]/90 border border-glass-border text-[10px] font-mono text-gray-300 backdrop-blur-md shadow-2xl">
+          {activeLocationTitle && (
+            <>
+              <div className="flex items-center gap-1">
+                <MapPin size={11} className="text-cyan-400" />
+                <span className="text-cyan-400 font-bold max-w-[160px] truncate">{activeLocationTitle}</span>
+              </div>
+              <div className="h-3 w-px bg-white/20" />
+            </>
+          )}
           <div>COORDS: <span className="text-cyan-400 font-bold">{coords.lat}° N, {coords.lng}° E</span></div>
           <div className="h-3 w-px bg-white/20" />
           <div>ZOOM: <span className="text-white font-bold">{currentZoom}x</span></div>

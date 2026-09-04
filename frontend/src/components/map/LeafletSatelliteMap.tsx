@@ -17,6 +17,7 @@ import {
   FileText,
   CheckCircle2,
 } from 'lucide-react';
+import { geocodeLocation } from '@/utils/geoCoder';
 
 interface LeafletSatelliteMapProps {
   interactive: boolean;
@@ -221,18 +222,29 @@ export default function LeafletSatelliteMap({
   };
 
   // Run Query
-  const handleRunQuery = (e?: React.FormEvent, customQuery?: string) => {
+  const handleRunQuery = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
-    const queryText = customQuery || query;
+    const queryText = (customQuery || query).trim();
+    if (!queryText) return;
+
     setIsAnalyzing(true);
+
+    try {
+      const loc = await geocodeLocation(queryText);
+      if (loc && mapInstanceRef.current) {
+        mapInstanceRef.current.flyTo([loc.lat, loc.lng], loc.zoom || 13, { duration: 2.2 });
+      }
+    } catch (err) {
+      // Non-spatial query
+    }
 
     setTimeout(() => {
       setIsAnalyzing(false);
       setConfidence(92.4);
       setExplanation(
-        `Analysis complete for "${queryText}": Multi-sensor classification confirmed +18.4% (+14.6 km²) built-up expansion with sub-pixel alignment accuracy.`
+        `Analysis complete for "${queryText}": Multi-sensor classification confirmed features with sub-pixel alignment accuracy.`
       );
-    }, 1400);
+    }, 1500);
   };
 
   return (
