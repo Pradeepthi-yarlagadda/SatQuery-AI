@@ -1,0 +1,14 @@
+model_name: "Orbit-IQ Optical-SAR Cross-Attention Fusion"
+benchmark: "ISRO Cartosat-2S + RISAT Standard / BigEarthNet-MM"
+dataset_url: "https://huggingface.co/datasets/BIFOLD-BigEarthNetv2-0/BigEarthNet.txt"
+opt_channels: 3
+sar_channels: 2
+embed_dim: 256
+num_heads: 4
+filter_type: "Lee Speckle Filter"
+window_size: 5
+confidence_baseline: 0.93
+heads:
+  - "built_up_affinity"
+  - "water_affinity"
+  - "cloud_penetration"

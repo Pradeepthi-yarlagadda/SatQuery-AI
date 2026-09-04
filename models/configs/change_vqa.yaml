@@ -1,0 +1,10 @@
+model_name: "Orbit-IQ CDVQA Change Reasoning Specialist"
+benchmark: "CDVQA Benchmark"
+dataset_url: "https://github.com/YZHJessica/CDVQA"
+input_pairs: 2
+input_resolution: [512, 512]
+question_types:
+  - "change_presence"
+  - "change_extent"
+  - "transition_semantics"
+confidence_baseline: 0.90

@@ -1,0 +1,5 @@
+model_name: "VRS-Captioner & LULC Descriptor"
+benchmark: "VRSBench / BigEarthNet-19"
+input_resolution: [512, 512]
+max_output_tokens: 256
+confidence_baseline: 0.93

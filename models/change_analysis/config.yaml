@@ -1,0 +1,13 @@
+model_name: "CDVQA Multitemporal Change Engine"
+benchmark: "CDVQA Benchmark"
+input_pairs: "Bi-temporal (Time 1 & Time 2)"
+input_resolution: [512, 512]
+sensitivity_threshold: 0.30
+smoothing_sigma: 1.5
+confidence_baseline: 0.95
+transitions:
+  - "Urban Expansion & Construction"
+  - "Vegetation / Forest Loss"
+  - "Flooding & Surface Inundation"
+  - "Water Reservoir Shrinkage / Drought"
+  - "Agricultural / General Surface Modification"

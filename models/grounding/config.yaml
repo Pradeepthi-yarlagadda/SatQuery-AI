@@ -1,0 +1,6 @@
+model_name: "VRS-Grounding Region Localizer"
+benchmark: "VRSBench Visual Grounding"
+input_resolution: [512, 512]
+iou_threshold: 0.50
+confidence_baseline: 0.91
+max_bounding_boxes: 20

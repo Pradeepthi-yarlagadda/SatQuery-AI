@@ -1,0 +1,11 @@
+model_name: "Orbit-IQ Siamese Bi-Temporal Change Detector"
+benchmark: "CDVQA / LEVIR-CD"
+dataset_url: "https://github.com/YZHJessica/CDVQA"
+backbone: "Siamese-CNN / Difference Network"
+input_shape: [3, 512, 512]
+difference_threshold: 0.15
+transitions:
+  - "INCREASED"
+  - "UNCHANGED"
+  - "LOCALIZED_SHIFT"
+confidence_baseline: 0.88

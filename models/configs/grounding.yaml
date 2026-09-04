@@ -1,0 +1,8 @@
+model_name: "Orbit-IQ VRS-Grounding Region Localizer"
+benchmark: "VRSBench Visual Grounding"
+dataset_url: "https://huggingface.co/datasets/xiang709/VRSBench"
+input_shape: [3, 512, 512]
+iou_threshold: 0.50
+crs_output: "EPSG:4326"
+export_format: "GeoJSON"
+confidence_baseline: 0.89

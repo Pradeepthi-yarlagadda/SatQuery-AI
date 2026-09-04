@@ -1,0 +1,9 @@
+model_name: "Cross-Modal Optical-SAR Fusion Specialist"
+benchmark: "ISRO Cartosat-2S + RISAT Standard"
+optical_sensor: "High-Resolution Optical (Cartosat-2S)"
+sar_sensor: "C-Band Synthetic Aperture Radar (RISAT-1A)"
+speckle_filter: "Lee Filter"
+filter_window: 5
+water_threshold_db: -12.0
+urban_threshold_db: -3.5
+confidence_baseline: 0.95

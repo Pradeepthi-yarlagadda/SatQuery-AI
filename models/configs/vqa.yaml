@@ -1,0 +1,13 @@
+model_name: "Orbit-IQ RS-VQA Reasoning Engine"
+benchmark: "RSVQA-HR / VRSBench VQA"
+dataset_url: "https://zenodo.org/records/6344367"
+architecture: "Vision-Language Cross-Attention"
+input_shape: [3, 512, 512]
+confidence_threshold: 0.85
+lora_rank: 16
+lora_alpha: 32
+heads:
+  - "presence"
+  - "count"
+  - "comparison"
+  - "land_cover"

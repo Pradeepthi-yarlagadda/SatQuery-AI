@@ -1,0 +1,10 @@
+model_name: "RS-VQA Reasoning Specialist"
+architecture: "Vision-Language Cross-Attention"
+benchmark: "RSVQA-HR"
+input_resolution: [512, 512]
+confidence_baseline: 0.88
+classes:
+  - "urban"
+  - "vegetation"
+  - "water"
+  - "bare_soil"

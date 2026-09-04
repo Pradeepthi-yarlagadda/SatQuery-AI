@@ -1,0 +1,14 @@
+model_name: "Orbit-IQ VRS-Captioner & LULC Descriptor"
+benchmark: "VRSBench Captioning / BigEarthNet"
+dataset_url: "https://huggingface.co/datasets/xiang709/VRSBench"
+input_shape: [3, 512, 512]
+max_tokens: 256
+confidence_baseline: 0.92
+classes:
+  - "Urban fabric & infrastructure"
+  - "Continuous & discontinuous built-up"
+  - "Arable land & permanent crops"
+  - "Pastures & natural grasslands"
+  - "Broad-leaved & coniferous forest"
+  - "Inland & marine wetlands"
+  - "Water courses & water bodies"
