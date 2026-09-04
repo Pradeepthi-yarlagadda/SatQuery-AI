@@ -10,7 +10,7 @@ import { AnalysisReport } from '@/types/report';
  * The service layer calls these endpoints transparently.
  */
 export const API_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_API_URL || '/api',
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || '',
   timeoutMs: 30000,
   endpoints: {
     // Master Orbit IQ Core endpoint (unified routing)

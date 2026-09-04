@@ -44,6 +44,7 @@ class AnalysisResponse(BaseModel):
     inputs: Optional[List[Dict[str, Any]]] = []
     completedAt: Optional[str] = None
     executionDurationMs: Optional[int] = None
+    location: Optional[Dict[str, Any]] = None
 
 
 class ReportResponse(BaseModel):

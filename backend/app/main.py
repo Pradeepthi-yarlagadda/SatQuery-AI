@@ -14,6 +14,7 @@ from backend.app.api.routes import (
     multimodal_router,
     report_router,
     projects_router,
+    geocoding_router,
 )
 
 app = FastAPI(
@@ -38,6 +39,7 @@ app.include_router(temporal_router)
 app.include_router(multimodal_router)
 app.include_router(report_router)
 app.include_router(projects_router)
+app.include_router(geocoding_router)
 
 
 from backend.app.api.schemas.requests import ValidateRequest
@@ -76,7 +78,7 @@ def get_mission_history():
 
 
 import httpx
-from fastapi import Request
+from fastapi import Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 FRONTEND_URL = "http://127.0.0.1:3000"
@@ -107,6 +109,9 @@ async def _proxy_to_frontend(request: Request, path: str = ""):
             k: v for k, v in resp_proxy.headers.items()
             if k.lower() not in excluded_headers
         }
+        resp_headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        resp_headers["Pragma"] = "no-cache"
+        resp_headers["Expires"] = "0"
         return Response(
             content=content,
             status_code=resp_proxy.status_code,
@@ -148,6 +153,17 @@ async def root(request: Request):
             "CROSS_MODAL_FUSION"
         ]
     }
+
+
+# Handle Next.js webpack hot-reload websocket cleanly
+@app.websocket("/_next/webpack-hmr")
+async def websocket_hmr(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            await websocket.receive_text()
+    except (WebSocketDisconnect, Exception):
+        pass
 
 
 # Catch-all route to transparently serve Next.js assets, pages, and components on localhost:8000

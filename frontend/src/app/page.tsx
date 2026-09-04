@@ -29,22 +29,25 @@ import {
   X,
 } from 'lucide-react';
 import { geocodeLocation, GeocodedLocation } from '@/utils/geoCoder';
+import { OrbitIqCore } from '@/services/orbitIqCore';
+import { AnalysisResult } from '@/types/analysis';
 
 const GOOGLE_EARTH_URL =
   'https://earth.google.com/web/@22.88899785,75.2951107,3744.95251812a,16284957.7173543d,35y,344.45125297h,0t,0r/data=CgRCAggBOgMKATBCAggASg0I____________ARAA?authuser=0';
 
 // Global Landmark Presets for 3D Earth Exploration
 const WORLD_PRESETS = [
-  { name: 'New Delhi', coords: [77.2090, 28.6139], zoom: 13.2, pitch: 45 },
-  { name: 'Mumbai', coords: [72.8347, 18.9220], zoom: 13.2, pitch: 45 },
-  { name: 'Bengaluru', coords: [77.5946, 12.9716], zoom: 13.5, pitch: 45 },
-  { name: 'Hyderabad', coords: [78.4867, 17.3850], zoom: 14.2, pitch: 45 },
-  { name: 'Sriharikota (ISRO)', coords: [80.2300, 13.7200], zoom: 14.5, pitch: 50 },
-  { name: 'Himalayas / Everest', coords: [86.9250, 27.9881], zoom: 12.5, pitch: 60 },
-  { name: 'Dubai Palm', coords: [55.1384, 25.1124], zoom: 13.5, pitch: 50 },
-  { name: 'Tokyo, Japan', coords: [139.6917, 35.6895], zoom: 13.8, pitch: 45 },
-  { name: 'Paris, France', coords: [2.3522, 48.8566], zoom: 14.0, pitch: 40 },
-  { name: 'New York City', coords: [-74.0060, 40.7128], zoom: 14.5, pitch: 50 },
+  { name: 'Guntur / Amaravati', chipLabel: 'Guntur', coords: [80.4365, 16.3067], zoom: 13.5, pitch: 40 },
+  { name: 'New Delhi', chipLabel: 'Delhi', coords: [77.2090, 28.6139], zoom: 13.2, pitch: 45 },
+  { name: 'Mumbai', chipLabel: 'Mumbai', coords: [72.8347, 18.9220], zoom: 13.2, pitch: 45 },
+  { name: 'Bengaluru', chipLabel: 'Bengaluru', coords: [77.5946, 12.9716], zoom: 13.5, pitch: 45 },
+  { name: 'Hyderabad', chipLabel: 'Hyderabad', coords: [78.4867, 17.3850], zoom: 14.2, pitch: 45 },
+  { name: 'Sriharikota (ISRO)', chipLabel: 'Sriharikota', coords: [80.2300, 13.7200], zoom: 14.5, pitch: 50 },
+  { name: 'Himalayas / Everest', chipLabel: 'Himalayas', coords: [86.9250, 27.9881], zoom: 12.5, pitch: 60 },
+  { name: 'Dubai Palm', chipLabel: 'Dubai', coords: [55.1384, 25.1124], zoom: 13.5, pitch: 50 },
+  { name: 'Tokyo, Japan', chipLabel: 'Tokyo', coords: [139.6917, 35.6895], zoom: 13.8, pitch: 45 },
+  { name: 'Paris, France', chipLabel: 'Paris', coords: [2.3522, 48.8566], zoom: 14.0, pitch: 40 },
+  { name: 'New York City', chipLabel: 'New York', coords: [-74.0060, 40.7128], zoom: 14.5, pitch: 50 },
 ];
 
 const featureCards = [
@@ -103,6 +106,7 @@ export default function LandingPage() {
 
   const [query, setQuery] = useState('Where did urban expansion occur between 2022 and 2026?');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activeAnalysisResult, setActiveAnalysisResult] = useState<AnalysisResult | null>(null);
 
   // Initialize MapLibre 3D Spherical Globe Canvas (Google Earth Physics)
   useEffect(() => {
@@ -572,7 +576,7 @@ export default function LandingPage() {
     }
   };
 
-  // Run Query with Location-Aware Flight & AI Scanline Trigger
+  // Run Query with Location-Aware Flight & AI Agent Inference
   const handleQuery = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
     const queryText = (customQuery || query).trim();
@@ -580,24 +584,53 @@ export default function LandingPage() {
 
     setIsAnalyzing(true);
 
+    let targetLoc: GeocodedLocation | null = null;
     // Extract any location mentioned in the question and fly there
     try {
-      const loc = await geocodeLocation(queryText);
-      if (loc) {
-        flyToLocation(loc);
+      targetLoc = await geocodeLocation(queryText);
+      if (targetLoc) {
+        flyToLocation(targetLoc);
         setSearchFeedback({
           type: 'success',
-          text: `🎯 Focused on ${loc.name} for spatial AI inference`,
+          text: `🎯 Focused on ${targetLoc.name} for spatial AI inference`,
         });
-        setTimeout(() => setSearchFeedback(null), 5000);
       }
     } catch (err) {
       // Non-spatial query: continue analysis
     }
 
-    setTimeout(() => {
+    try {
+      const locName = targetLoc?.name || activeLocationTitle || 'satellite_scene';
+      const inputs = [
+        {
+          id: 'satellite-current-view',
+          fileName: `${locName.replace(/[^a-zA-Z0-9]/g, '_')}.tif`,
+          modality: 'optical' as const,
+          url: '/images/assets/hero-satellite.jpg',
+          capturedAt: '2026-09-04',
+          resolutionMeters: 0.5,
+        },
+      ];
+
+      const res = await OrbitIqCore.executeAnalysis({
+        query: queryText,
+        inputs,
+      });
+      setActiveAnalysisResult(res);
+      setSearchFeedback({
+        type: 'success',
+        text: `✅ ${res.specialistDisplayName || 'Specialist'}: ${res.answer.slice(0, 90)}...`,
+      });
+    } catch (err: any) {
+      console.warn('Query analysis execution failed:', err);
+      setSearchFeedback({
+        type: 'error',
+        text: `Analysis error: ${err.message || 'Could not complete request.'}`,
+      });
+    } finally {
       setIsAnalyzing(false);
-    }, 1600);
+      setTimeout(() => setSearchFeedback(null), 6000);
+    }
   };
 
   return (
@@ -936,7 +969,7 @@ export default function LandingPage() {
                 onClick={() => flyToPreset(p)}
                 className="shrink-0 px-2.5 py-1 rounded-lg bg-[#050814]/85 border border-glass-border hover:border-cyan-400/40 text-[10px] font-mono text-gray-300 hover:text-cyan-400 transition-colors shadow-lg cursor-pointer"
               >
-                {p.name.split(' ')[0]}
+                {p.chipLabel || p.name.split(' ')[0]}
               </button>
             ))}
           </div>
@@ -1024,6 +1057,63 @@ export default function LandingPage() {
           <div className="h-3 w-px bg-white/20" />
           <div>ROTATION: <span className="text-emerald-400 font-bold">360° FREE ROTATE</span></div>
         </div>
+
+        {/* Floating AI Intelligence Result Card */}
+        {activeAnalysisResult && (
+          <div className="absolute inset-x-6 sm:inset-x-12 lg:inset-x-24 bottom-32 z-30 max-w-4xl mx-auto">
+            <div className="glass-panel p-4 rounded-2xl border-cyan-400/50 shadow-2xl backdrop-blur-2xl bg-[#050814]/95 text-white space-y-2.5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+                  <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">
+                    {activeAnalysisResult.specialistDisplayName || 'Specialist Intelligence'}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
+                    {activeAnalysisResult.confidence?.level || 'High'} Conf ({(((activeAnalysisResult.confidence?.overall || 0.94)) * 100).toFixed(1)}%)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveAnalysisResult(null)}
+                  className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Close intelligence card"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div>
+                <p className="text-xs sm:text-sm text-gray-200 leading-relaxed font-sans font-medium">
+                  {activeAnalysisResult.answer}
+                </p>
+              </div>
+
+              {activeAnalysisResult.keyFindings && activeAnalysisResult.keyFindings.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                  {activeAnalysisResult.keyFindings.slice(0, 4).map((finding, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5 text-[11px] font-mono text-cyan-200/90 bg-cyan-950/40 px-2.5 py-1 rounded-lg border border-cyan-500/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shrink-0" />
+                      <span className="truncate">{finding}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-1.5 text-xs border-t border-white/10">
+                <div className="text-[10px] font-mono text-gray-400">
+                  LAT: {coords.lat.toFixed(4)}° | LNG: {coords.lng.toFixed(4)}°
+                </div>
+                <Link
+                  href={`/chat?q=${encodeURIComponent(activeAnalysisResult.query || query)}`}
+                  className="inline-flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 font-medium hover:underline text-xs"
+                >
+                  <span>Open in Full Analysis Workspace</span>
+                  <ExternalLink size={12} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Floating Bottom "Ask Orbit IQ..." Query Bar */}
         <div className="absolute inset-x-6 sm:inset-x-12 lg:inset-x-24 bottom-6 z-30 max-w-5xl mx-auto">

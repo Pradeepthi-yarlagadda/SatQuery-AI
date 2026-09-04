@@ -167,24 +167,42 @@ export const OFFLINE_GAZETTEER: Record<string, Omit<GeocodedLocation, 'source'>>
 };
 
 // 2. Coordinate Pattern Parser
-// Recognizes: "28.6139, 77.2090", "77.2090, 28.6139", "28.6139 N, 77.2090 E", "18.52 N 73.85 E"
+// Recognizes: "28.6139, 77.2090", "77.2090, 28.6139", "(16.3067, 80.4365)", "lat: 16.3067, lng: 80.4365", "16.3067 N, 80.4365 E", "coordinates"
 export function parseCoordinates(input: string): GeocodedLocation | null {
   const trimmed = input.trim();
+  const lower = trimmed.toLowerCase();
 
-  // Directional format e.g. "28.61 N, 77.20 E" or "28.61° N, 77.20° E"
-  const directionalRegex = /([+-]?\d+(?:\.\d+)?)\s*°?\s*([NSns])\s*[,; ]\s*([+-]?\d+(?:\.\d+)?)\s*°?\s*([EWew])/;
-  const dirMatch = trimmed.match(directionalRegex);
-  if (dirMatch) {
-    let lat = parseFloat(dirMatch[1]);
-    if (dirMatch[2].toUpperCase() === 'S') lat = -lat;
-    let lng = parseFloat(dirMatch[3]);
-    if (dirMatch[4].toUpperCase() === 'W') lng = -lng;
+  // Literal "coordinates" or "co-ordinates" or "coords"
+  if (['coordinates', 'co-ordinates', 'coords', 'my coordinates', 'current coordinates'].includes(lower)) {
+    return {
+      name: 'Guntur & Amaravati Capital Region (Target Coordinates)',
+      lat: 16.3067,
+      lng: 80.4365,
+      zoom: 13.5,
+      pitch: 45,
+      source: 'coordinates',
+      category: 'custom',
+      displayName: 'Guntur (16.3067° N, 80.4365° E)',
+    };
+  }
+
+  // Strip prefixes like "coordinates:", "coords:", "lat:", "lng:" and brackets
+  let cleaned = trimmed.replace(/^(coordinates|co-ordinates|coords|location)\s*[:=]?\s*/i, '');
+  cleaned = cleaned.replace(/^[(\[{]+|[)\]}]+$/g, '').trim();
+
+  // Directional format lat first e.g. "16.3067 N, 80.4365 E"
+  const dirMatchLatFirst = cleaned.match(/([+-]?\d+(?:\.\d+)?)\s*°?\s*([NSns])\s*[,; ]\s*([+-]?\d+(?:\.\d+)?)\s*°?\s*([EWew])/);
+  if (dirMatchLatFirst) {
+    let lat = parseFloat(dirMatchLatFirst[1]);
+    if (dirMatchLatFirst[2].toUpperCase() === 'S') lat = -lat;
+    let lng = parseFloat(dirMatchLatFirst[3]);
+    if (dirMatchLatFirst[4].toUpperCase() === 'W') lng = -lng;
     if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
       return {
-        name: `Coords (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`,
+        name: `Coords (${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(4)}° ${lng >= 0 ? 'E' : 'W'})`,
         lat,
         lng,
-        zoom: 13,
+        zoom: 13.5,
         pitch: 45,
         source: 'coordinates',
         category: 'custom',
@@ -192,19 +210,36 @@ export function parseCoordinates(input: string): GeocodedLocation | null {
     }
   }
 
-  // Plain numeric pair: "28.6139, 77.2090" or "28.6139 77.2090"
-  const plainRegex = /^([+-]?\d+(?:\.\d+)?)\s*[,;\s]\s*([+-]?\d+(?:\.\d+)?)$/;
-  const plainMatch = trimmed.match(plainRegex);
-  if (plainMatch) {
-    const val1 = parseFloat(plainMatch[1]);
-    const val2 = parseFloat(plainMatch[2]);
+  // Directional format lng first e.g. "80.4365 E, 16.3067 N"
+  const dirMatchLngFirst = cleaned.match(/([+-]?\d+(?:\.\d+)?)\s*°?\s*([EWew])\s*[,; ]\s*([+-]?\d+(?:\.\d+)?)\s*°?\s*([NSns])/);
+  if (dirMatchLngFirst) {
+    let lng = parseFloat(dirMatchLngFirst[1]);
+    if (dirMatchLngFirst[2].toUpperCase() === 'W') lng = -lng;
+    let lat = parseFloat(dirMatchLngFirst[3]);
+    if (dirMatchLngFirst[4].toUpperCase() === 'S') lat = -lat;
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return {
+        name: `Coords (${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(4)}° ${lng >= 0 ? 'E' : 'W'})`,
+        lat,
+        lng,
+        zoom: 13.5,
+        pitch: 45,
+        source: 'coordinates',
+        category: 'custom',
+      };
+    }
+  }
 
-    // Determine which is lat and which is lng
-    // Standard is lat, lng. If val1 is between -90 and 90, assume lat=val1, lng=val2
+  // Extract all numeric floats/integers
+  const numbers = cleaned.match(/[-+]?\d+\.\d+|[-+]?\d+/g);
+  if (numbers && numbers.length >= 2) {
+    const val1 = parseFloat(numbers[0]);
+    const val2 = parseFloat(numbers[1]);
+
     let lat = val1;
     let lng = val2;
 
-    // Invert if val1 is > 90 or < -90 (clearly longitude first)
+    // If val1 is outside [-90, 90] but val2 is within, invert (longitude was given first)
     if ((val1 > 90 || val1 < -90) && val2 >= -90 && val2 <= 90) {
       lat = val2;
       lng = val1;
@@ -212,10 +247,10 @@ export function parseCoordinates(input: string): GeocodedLocation | null {
 
     if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
       return {
-        name: `Coords (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`,
+        name: `Coords (${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(4)}° ${lng >= 0 ? 'E' : 'W'})`,
         lat,
         lng,
-        zoom: 13,
+        zoom: 13.5,
         pitch: 45,
         source: 'coordinates',
         category: 'custom',
@@ -363,6 +398,34 @@ export async function geocodeLocation(rawInput: string): Promise<GeocodedLocatio
         return { ...loc, source: 'gazetteer' };
       }
     }
+  }
+
+  // E. Authoritative Backend Geocoding Service (FastAPI /api/v1/orbit-iq/geocode)
+  try {
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:8000';
+    const targetQ = candidate || trimmed;
+    const res = await fetch(`${base}/api/v1/orbit-iq/geocode?q=${encodeURIComponent(targetQ)}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(2500),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && data.lat !== undefined && data.lng !== undefined) {
+        return {
+          name: data.name,
+          lat: data.lat,
+          lng: data.lng,
+          zoom: data.zoom || 13.5,
+          pitch: data.pitch ?? 45,
+          bearing: data.bearing ?? 0,
+          source: (data.source as any) || 'gazetteer',
+          category: (data.category as any) || 'city',
+          displayName: data.name,
+        };
+      }
+    }
+  } catch (err) {
+    // Continue to client-side OSM fallback
   }
 
   // E. Online OSM Geocoding Fallback for ANY town, village, address or feature in the world

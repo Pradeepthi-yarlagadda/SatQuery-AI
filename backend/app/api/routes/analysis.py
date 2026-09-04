@@ -8,6 +8,7 @@ from backend.app.api.schemas.responses import AnalysisResponse
 from backend.app.api.routes.upload import UPLOADED_IMAGES
 from backend.app.agent.controller import AgentController
 from backend.app.remote_sensing.geotiff import GeoTIFFHandler
+from backend.app.api.routes.geocoding import resolve_location
 try:
     import torch
     _ = torch.zeros(1)
@@ -162,12 +163,30 @@ def analyze(req: AnalysisRequest):
             }
         })
 
+    location_info = resolve_location(req.query)
+    if location_info:
+        lat = location_info["lat"]
+        lng = location_info["lng"]
+        delta = 0.05
+        if payloads and "bounds" in payloads[0].get("metadata", {}):
+            payloads[0]["metadata"]["bounds"] = {
+                "left": round(lng - delta, 4),
+                "bottom": round(lat - delta, 4),
+                "right": round(lng + delta, 4),
+                "top": round(lat + delta, 4),
+            }
+            payloads[0]["metadata"]["location_name"] = location_info.get("name")
+
+    params = dict(req.parameters or {})
+    if location_info:
+        params["location"] = location_info
+
     outcome = controller.process_query(
         query=req.query,
         image_payloads=payloads,
         has_sar=has_sar,
         task=req.task,
-        parameters=req.parameters
+        parameters=params
     )
     if not outcome["success"]:
         raise HTTPException(status_code=422, detail=outcome.get("error", "Analysis failed"))
@@ -191,6 +210,22 @@ def analyze(req: AnalysisRequest):
             f"Validated spatial bounds and radiometric consistency."
         ]
 
+    if location_info:
+        loc_name = location_info.get("name", "Target Region")
+        lat = location_info.get("lat", 0.0)
+        lng = location_info.get("lng", 0.0)
+        coords_str = f"{abs(lat):.4f}° {'N' if lat>=0 else 'S'}, {abs(lng):.4f}° {'E' if lng>=0 else 'W'}"
+        loc_intro = f"Observation focused on {loc_name} ({coords_str})."
+
+        is_loc_query = (
+            any(k in req.query.lower() for k in ["guntur", "amaravati", "coordinate", "co-ordinate", "coords", "lat", "location", "where", "search"])
+            or len(req.query.strip().split()) <= 3
+        )
+        if is_loc_query and loc_name.lower() not in answer.lower():
+            answer = f"{loc_intro} {answer}"
+
+        findings.insert(0, f"Target Location: {loc_name} ({coords_str})")
+
     # Visual Evidence format
     evidence_type = meta_info["evidence_type"]
     base_img_url = "/images/assets/hero-satellite.jpg"
@@ -203,7 +238,8 @@ def analyze(req: AnalysisRequest):
         "description": f"Computed spatial intelligence findings produced by {meta_info['specialist_display']}.",
         "baseImageUrl": base_img_url,
         "metrics": {str(k).replace("_", " ").title(): str(v) for k, v in metrics.items()},
-        "confidence": conf
+        "confidence": conf,
+        "location": location_info
     }
 
     if evidence_type == "segmentation_mask":
@@ -324,7 +360,8 @@ def analyze(req: AnalysisRequest):
         executionTrace=formatted_steps,
         inputs=req.inputs if req.inputs else [{"id": p.get("metadata", {}).get("filename", "scene.tif"), "url": base_img_url, "modality": p.get("metadata", {}).get("modality", "optical")} for p in payloads],
         completedAt=time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        executionDurationMs=int(outcome.get("latency_ms", 120.0))
+        executionDurationMs=int(outcome.get("latency_ms", 120.0)),
+        location=location_info
     )
 
 

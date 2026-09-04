@@ -208,18 +208,14 @@ export class OrbitIqCore {
     let result: AnalysisResult;
 
     try {
-      // Try live backend first if configured and reachable
-      if (process.env.NEXT_PUBLIC_API_URL) {
-        result = await apiRequest<AnalysisResult>(API_CONFIG.endpoints.analyze, {
-          method: 'POST',
-          body: JSON.stringify(request),
-        });
-      } else {
-        // Fallback to clearly mapped deterministic scenario matching query context
-        result = this.resolveScenarioResult(request, routing);
-      }
+      // Primary: Execute against live Python FastAPI / PyTorch Agent Controller
+      result = await apiRequest<AnalysisResult>(API_CONFIG.endpoints.analyze, {
+        method: 'POST',
+        body: JSON.stringify(request),
+      });
     } catch (err) {
-      console.warn('Backend API call fallback to local scenario engine:', err);
+      console.warn('Backend API call returned error or unreachable, using local deterministic scenario fallback:', err);
+      // Secondary: Fallback to clearly mapped deterministic scenario matching query context
       result = this.resolveScenarioResult(request, routing);
     }
 
