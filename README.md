@@ -1,6 +1,6 @@
-# 🛰️ Orbit-IQ (SatQuery AI) — SIH26167
+# 🛰️ Orbit-IQ (SatQuery AI)
 > **Agentic Vision-Language Assistant for Remote Sensing & Satellite Earth Observation**  
-> Problem Statement: **SIH26167** | Organization: **ISRO / Space Applications Centre (SAC)**
+> Organization: **ISRO / Space Applications Centre (SAC)**
 
 ---
 
